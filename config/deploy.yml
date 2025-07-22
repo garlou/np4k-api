@@ -1,0 +1,55 @@
+# Name of your application. Used to uniquely configure containers.
+service: np4k-api
+
+# Name of the container image.
+image: cjulio001/np4k-api
+
+# Deploy to these servers.
+servers:
+  web:
+    - 116.203.116.230
+
+# Enable SSL auto certification via Let's Encrypt and allow for multiple apps on a single web server.
+proxy:
+  ssl: true
+  host: np4k.webgrab.click
+  app_port: 3002
+  healthcheck:
+    path: /health
+    interval: 7
+    timeout: 49
+
+# Credentials for your image host.
+registry:
+  username: cjulio001
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+
+# Inject ENV variables into containers (secrets come from .kamal/secrets).
+env:
+  secret:
+    - API_TOKEN
+  clear:
+    PORT: 3002
+    # Set number of cores available to the application on each server (default: 1).
+    WEB_CONCURRENCY: 2
+    # Log level for the application
+    LOG_LEVEL: info
+
+# Aliases are triggered with "bin/kamal <alias>". You can overwrite arguments on invocation:
+aliases:
+  console: app exec --interactive --reuse "python"
+  shell: app exec --interactive --reuse "bash"
+  logs: app logs -f
+  health: app exec "curl -f http://localhost:3002/health"
+  test: app exec "python test_api.py"
+  apps: server exec docker exec kamal-proxy kamal-proxy list
+
+# Configure the image builder.
+builder:
+  arch: amd64
+
+# Use a different ssh user than root
+ssh:
+  user: root
+  keys: [ "~/.ssh/id_rsa" ]
