@@ -6,6 +6,7 @@ A secure Python API that uses newspaper4k to parse and extract information from 
 
 - 🔐 **Secure**: Token-based authentication
 - 📰 **Article Parsing**: Extract title, text, summary, keywords, authors, and more
+- 🛡️ **Cloudflare Bypass**: Integrated cloudscraper for anti-bot protection
 - 🚀 **Fast**: Built with Flask and Gunicorn
 - 🐳 **Dockerized**: Easy deployment with Docker
 - 📊 **Batch Processing**: Parse multiple URLs at once
@@ -129,6 +130,30 @@ Parse multiple articles from URLs (max 10 URLs per request)
     "https://example.com/article1",
     "https://example.com/article2"
   ]
+}
+```
+
+#### `POST /test-cloudscraper`
+Test cloudscraper functionality with a URL (useful for debugging Cloudflare bypass)
+
+**Request:**
+```json
+{
+  "url": "https://example.com"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "status_code": 200,
+  "content_length": 15420,
+  "headers": {
+    "content-type": "text/html",
+    "server": "cloudflare"
+  },
+  "cloudscraper_working": true
 }
 ```
 

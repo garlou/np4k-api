@@ -65,7 +65,7 @@ def parse_article():
         logger.info(f"Parsing article from URL: {url}")
 
         # Download and parse the article
-        article = Article(url)
+        article = Article(url, browser_user_agent='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36')
         article.download()
         article.parse()
 

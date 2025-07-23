@@ -8,7 +8,7 @@ stop:
   docker compose down
 
 bash:
-  docker exec -it qiosq bash
+  docker exec -it qiosq-np4k-article-parser-api-1 bash
 
 # Deploy
 setup:

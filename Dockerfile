@@ -20,8 +20,13 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
+COPY ./vendor/cloudscrapper /app/vendor/cloudscrapper
+
+RUN pip install /app/vendor/cloudscrapper
+
 # Copy application code
 COPY app.py .
+COPY test.py .
 
 # Create non-root user for security
 RUN useradd --create-home --shell /bin/bash app && chown -R app:app /app
