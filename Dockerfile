@@ -23,6 +23,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY ./vendor/cloudscrapper /app/vendor/cloudscrapper
 
 RUN pip install /app/vendor/cloudscrapper
+RUN pip install playwright
+RUN playwright install
+RUN playwright install-deps
 
 # Copy application code
 COPY app.py .
