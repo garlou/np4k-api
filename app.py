@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-from newspaper import Article
+from newspaper import Article, Config
 import os
 from functools import wraps
 import logging
@@ -64,13 +64,23 @@ def parse_article():
 
         logger.info(f"Parsing article from URL: {url}")
 
+        c =  Config()
+        c.browser_user_agent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36'
+        c.keep_article_html = True
+        c.remove_unknown_tags = False
+        c.allow_tags = ['a', 'span', 'p', 'br', 'strong', 'b',
+            'em', 'i', 'tt', 'code', 'pre', 'blockquote', 'img', 'h1',
+            'h2', 'h3', 'h4', 'h5', 'h6', 'figure']
+        c.keep_article_html = True
+        c.browser_html_parser = 'lxml'
         # Download and parse the article
-        article = Article(url, browser_user_agent='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36')
+        article = Article(url, config=c)
         article.download()
         article.parse()
 
         # Extract article information
         article_data = {
+            'html': article.article_html,
             'title': article.title,
             'text': article.text,
             'summary': article.summary,
