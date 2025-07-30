@@ -84,10 +84,10 @@ def parse_article():
         article.parse()
         article.nlp()
 
-                # Try to get article HTML with images preserved
+        # Try to get article HTML with images preserved
         article_html_with_images = article.article_html
 
-        # If we have the full document HTML, try to extract just the article content with images
+        # If we have the full document HTML, try to extract just the article content with images and videos
         if article.html:
             try:
                 from bs4 import BeautifulSoup
@@ -97,23 +97,37 @@ def parse_article():
                 article_content = soup.find('article') or soup.find('main') or soup.find('div', class_='content') or soup.find('div', class_='article')
 
                 if article_content:
-                    # Keep the article content with images
+                    # Keep the article content with images and videos
                     article_html_with_images = str(article_content)
-                else:
-                    # Fallback: use the processed article HTML but inject images
-                    if article.images and article_html_with_images:
-                        import re
-                        # Look for the first content tag
-                        match = re.search(r'<(p|div|section|article)[^>]*>', article_html_with_images)
-                        if match:
-                            # Insert images after the first content element
-                            insert_pos = match.end()
-                            image_html = '\n'.join([f'<img src="{img}" alt="Article image" />' for img in article.images[:3]])
-                            article_html_with_images = article_html_with_images[:insert_pos] + '\n' + image_html + '\n' + article_html_with_images[insert_pos:]
+
+                # Always try to inject videos if we have them (regardless of whether we found article_content)
+                if article.movies and article_html_with_images:
+                    import re
+                    # Look for the first content tag
+                    match = re.search(r'<(p|div|section|article)[^>]*>', article_html_with_images)
+                    if match:
+                        # Insert videos after the first content element
+                        insert_pos = match.end()
+
+                        # Filter out .webm videos and prepare video HTML
+                        video_html = []
+                        for video in article.movies[:3]:  # Limit to first 3 videos
+                            if not video.lower().endswith('.webm'):
+                                video_html.append(f'<video controls><source src="{video}" type="video/mp4">Your browser does not support the video tag.</video>')
+
+                        if video_html:
+                            article_html_with_images = article_html_with_images[:insert_pos] + '\n' + '\n'.join(video_html) + '\n' + article_html_with_images[insert_pos:]
             except Exception as e:
-                logger.warning(f"Failed to extract article with images: {e}")
+                logger.warning(f"Failed to extract article with images and videos: {e}")
                 # Fallback to original article_html
                 article_html_with_images = article.article_html
+
+        # Debug logging for videos
+        logger.info(f"Found {len(article.movies) if article.movies else 0} videos")
+        if article.movies:
+            logger.info(f"Videos: {article.movies[:3]}")
+            filtered_videos = [v for v in article.movies if not v.lower().endswith('.webm')]
+            logger.info(f"Filtered videos (no .webm): {filtered_videos[:3]}")
 
         # Extract article information
         article_data = {
@@ -128,7 +142,8 @@ def parse_article():
             'publish_date': article.publish_date.isoformat() if article.publish_date else None,
             'top_image': article.top_image,
             'images': article.images,
-            'movies': article.movies,
+            # 'movies': article.movies,
+            'movies': [v for v in article.movies if article.movies and not v.lower().endswith('.webm')],
             'meta_description': article.meta_description,
             'meta_keywords': article.meta_keywords,
             'meta_lang': article.meta_lang,
