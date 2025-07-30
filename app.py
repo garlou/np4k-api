@@ -73,19 +73,20 @@ def parse_article():
         c.remove_unknown_tags = False
         c.allow_tags = ['a', 'span', 'p', 'br', 'strong', 'b',
             'em', 'i', 'tt', 'code', 'pre', 'blockquote', 'img', 'h1',
-            'h2', 'h3', 'h4', 'h5', 'h6', 'figure', 'img', 'picture', 'ul', 'li']
+            'h2', 'h3', 'h4', 'h5', 'h6', 'figure', 'img', 'picture', 'ul', 'li', 'div', 'section', 'article']
         c.browser_html_parser = 'lxml'
-        c.fetch_images = False
+        c.fetch_images = True
         c.request_timeout = 60
 
         # Download and parse the article
-        article = Article(url, config=c, fetch_images=False)
+        article = Article(url, config=c)
         article.download()
         article.parse()
         article.nlp()
 
         # Extract article information
         article_data = {
+            'raw_html': article.html,
             'html': article.article_html,
             'title': article.title,
             'text': article.text,
