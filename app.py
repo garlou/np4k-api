@@ -84,9 +84,41 @@ def parse_article():
         article.parse()
         article.nlp()
 
+                # Try to get article HTML with images preserved
+        article_html_with_images = article.article_html
+
+        # If we have the full document HTML, try to extract just the article content with images
+        if article.html:
+            try:
+                from bs4 import BeautifulSoup
+                soup = BeautifulSoup(article.html, 'html.parser')
+
+                # Try to find the main article content
+                article_content = soup.find('article') or soup.find('main') or soup.find('div', class_='content') or soup.find('div', class_='article')
+
+                if article_content:
+                    # Keep the article content with images
+                    article_html_with_images = str(article_content)
+                else:
+                    # Fallback: use the processed article HTML but inject images
+                    if article.images and article_html_with_images:
+                        import re
+                        # Look for the first content tag
+                        match = re.search(r'<(p|div|section|article)[^>]*>', article_html_with_images)
+                        if match:
+                            # Insert images after the first content element
+                            insert_pos = match.end()
+                            image_html = '\n'.join([f'<img src="{img}" alt="Article image" />' for img in article.images[:3]])
+                            article_html_with_images = article_html_with_images[:insert_pos] + '\n' + image_html + '\n' + article_html_with_images[insert_pos:]
+            except Exception as e:
+                logger.warning(f"Failed to extract article with images: {e}")
+                # Fallback to original article_html
+                article_html_with_images = article.article_html
+
         # Extract article information
         article_data = {
-            'raw_html': article.html,
+            # 'raw_html': article.html,
+            'raw_html': article_html_with_images,
             'html': article.article_html,
             'title': article.title,
             'text': article.text,
