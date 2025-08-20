@@ -13,6 +13,9 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
+# Set Flask request timeout to 60 seconds
+app.config['REQUEST_TIMEOUT'] = 60
+
 # Fixed token for API security
 API_TOKEN = os.getenv('API_TOKEN', 'your-secure-token-here')
 
@@ -213,4 +216,5 @@ def parse_articles_batch():
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 3002))
-    app.run(host='0.0.0.0', port=port, debug=False)
+    # Set timeout for development server
+    app.run(host='0.0.0.0', port=port, debug=False, threaded=True)

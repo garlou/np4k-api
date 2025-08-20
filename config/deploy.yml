@@ -14,10 +14,11 @@ proxy:
   ssl: true
   host: np4k.webgrab.click
   app_port: 3002
+  response_timeout: 60
   healthcheck:
     path: /health
     interval: 7
-    timeout: 49
+    timeout: 60
 
 # Credentials for your image host.
 registry:
@@ -35,6 +36,11 @@ env:
     WEB_CONCURRENCY: 2
     # Log level for the application
     LOG_LEVEL: info
+    # Gunicorn timeout settings
+    GUNICORN_TIMEOUT: 60
+    GUNICORN_WORKERS: 2
+    # Request timeout settings
+    REQUEST_TIMEOUT: 60
 
 # Aliases are triggered with "bin/kamal <alias>". You can overwrite arguments on invocation:
 aliases:
