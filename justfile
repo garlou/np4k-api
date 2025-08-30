@@ -14,8 +14,14 @@ bash:
 setup:
   KAMAL_REGISTRY_PASSWORD=`grep -i '^KAMAL_REGISTRY_PASSWORD=' secrets.env | cut -d '=' -f2` kamal setup
 
+setup-hel:
+  KAMAL_REGISTRY_PASSWORD=`grep -i '^KAMAL_REGISTRY_PASSWORD=' secrets.env | cut -d '=' -f2` kamal setup -d hel
+
 deploy:
   KAMAL_REGISTRY_PASSWORD=`grep -i '^KAMAL_REGISTRY_PASSWORD=' secrets.env | cut -d '=' -f2` kamal deploy
+
+deploy-hel:
+  KAMAL_REGISTRY_PASSWORD=`grep -i '^KAMAL_REGISTRY_PASSWORD=' secrets.env | cut -d '=' -f2` kamal deploy -d hel
 
 ssh:
   kamal app exec -i bash
