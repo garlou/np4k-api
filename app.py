@@ -4,6 +4,10 @@ import os
 from functools import wraps
 import logging
 import nltk
+import asyncio
+from crawl4ai import AsyncWebCrawler, CrawlerRunConfig
+from crawl4ai.content_filter_strategy import PruningContentFilter
+from crawl4ai.markdown_generation_strategy import DefaultMarkdownGenerator
 
 nltk.download('punkt_tab')
 
@@ -212,6 +216,80 @@ def parse_articles_batch():
         return jsonify({
             'success': False,
             'error': f'Failed to process batch: {str(e)}'
+        }), 500
+
+@app.route('/scrape', methods=['POST'])
+@require_token
+def scrape_url():
+    """Scrape URL using crawl4ai"""
+    try:
+        data = request.get_json()
+
+        if not data or 'url' not in data:
+            return jsonify({'error': 'URL is required'}), 400
+
+        url = data['url']
+
+        if not url or not isinstance(url, str):
+            return jsonify({'error': 'Valid URL string is required'}), 400
+
+        logger.info(f"Scraping URL with crawl4ai: {url}")
+
+        # Configure crawl4ai
+        md_generator = DefaultMarkdownGenerator(
+            content_filter=PruningContentFilter(threshold=0.4, threshold_type="fixed")
+        )
+
+        config = CrawlerRunConfig(
+            cache_mode="bypass",
+            markdown_generator=md_generator
+        )
+
+        # Run the crawler asynchronously
+        async def run_crawler():
+            async with AsyncWebCrawler() as crawler:
+                result = await crawler.arun(url, config=config)
+                return result
+
+        # Execute the async function
+        try:
+            result = asyncio.run(run_crawler())
+        except RuntimeError:
+            # Fallback for environments where asyncio.run is not available
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                result = loop.run_until_complete(run_crawler())
+            finally:
+                loop.close()
+
+        # Extract the results
+        scrape_data = {
+            'url': url,
+            'raw_markdown_length': len(result.markdown.raw_markdown),
+            'fit_markdown_length': len(result.markdown.fit_markdown),
+            'raw_markdown': result.markdown.raw_markdown,
+            'fit_markdown': result.markdown.fit_markdown,
+            'metadata': {
+                'title': getattr(result, 'title', None),
+                'description': getattr(result, 'description', None),
+                'language': getattr(result, 'language', None),
+                'status_code': getattr(result, 'status_code', None),
+            }
+        }
+
+        logger.info(f"Successfully scraped URL: {url}")
+
+        return jsonify({
+            'success': True,
+            'scrape_data': scrape_data
+        })
+
+    except Exception as e:
+        logger.error(f"Error scraping URL: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'Failed to scrape URL: {str(e)}'
         }), 500
 
 if __name__ == '__main__':

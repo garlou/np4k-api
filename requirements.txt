@@ -5,3 +5,5 @@ python-dotenv==1.0.0
 gunicorn==21.2.0
 lxml[html_clean]
 lxml_html_clean
+crawl4ai
+playwright
