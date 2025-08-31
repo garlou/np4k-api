@@ -5,9 +5,11 @@ from functools import wraps
 import logging
 import nltk
 import asyncio
-from crawl4ai import AsyncWebCrawler, CrawlerRunConfig
-from crawl4ai.content_filter_strategy import PruningContentFilter
-from crawl4ai.markdown_generation_strategy import DefaultMarkdownGenerator
+import json
+from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig, CacheMode, LLMConfig
+from crawl4ai import LLMExtractionStrategy
+from pydantic import BaseModel, Field
+from typing import List, Optional, Any
 
 nltk.download('punkt_tab')
 
@@ -221,7 +223,7 @@ def parse_articles_batch():
 @app.route('/scrape', methods=['POST'])
 @require_token
 def scrape_url():
-    """Scrape URL using crawl4ai"""
+    """Scrape URL using crawl4ai with LLM extraction"""
     try:
         data = request.get_json()
 
@@ -233,22 +235,48 @@ def scrape_url():
         if not url or not isinstance(url, str):
             return jsonify({'error': 'Valid URL string is required'}), 400
 
-        logger.info(f"Scraping URL with crawl4ai: {url}")
+        # Get extraction schema and instructions from request
+        schema = data.get('schema', {})
+        instruction = data.get('instruction', 'Extract the main content with images from this webpage.')
+        extraction_type = data.get('extraction_type', 'schema')
+        input_format = data.get('input_format', 'markdown')
+        temperature = data.get('temperature', 0.0)
+        max_tokens = data.get('max_tokens', 800)
 
-        # Configure crawl4ai
-        md_generator = DefaultMarkdownGenerator(
-            content_filter=PruningContentFilter(threshold=0.4, threshold_type="fixed")
+        logger.info(f"Scraping URL with crawl4ai LLM extraction: {url}")
+
+        # Create LLM extraction strategy
+        llm_strategy = LLMExtractionStrategy(
+            llm_config=LLMConfig(
+                provider="ollama/llama3.2",
+                base_url="http://ollama:11434"
+            ),
+            schema=schema,
+            extraction_type=extraction_type,
+            instruction=instruction,
+            chunk_token_threshold=1000,
+            overlap_rate=0.0,
+            apply_chunking=True,
+            input_format=input_format,
+            extra_args={"temperature": temperature, "max_tokens": max_tokens}
         )
 
-        config = CrawlerRunConfig(
-            cache_mode="bypass",
-            markdown_generator=md_generator
+        # Configure crawler
+        crawl_config = CrawlerRunConfig(
+            extraction_strategy=llm_strategy,
+            cache_mode=CacheMode.BYPASS
+        )
+
+        # Browser configuration
+        browser_cfg = BrowserConfig(
+          headless=True,
+          viewport={'width': 800, 'height': 600}  # Smaller viewport for better performance
         )
 
         # Run the crawler asynchronously
         async def run_crawler():
-            async with AsyncWebCrawler() as crawler:
-                result = await crawler.arun(url, config=config)
+            async with AsyncWebCrawler(config=browser_cfg) as crawler:
+                result = await crawler.arun(url, config=crawl_config)
                 return result
 
         # Execute the async function
@@ -266,10 +294,9 @@ def scrape_url():
         # Extract the results
         scrape_data = {
             'url': url,
-            'raw_markdown_length': len(result.markdown.raw_markdown),
-            'fit_markdown_length': len(result.markdown.fit_markdown),
-            'raw_markdown': result.markdown.raw_markdown,
-            'fit_markdown': result.markdown.fit_markdown,
+            'success': result.success,
+            'extracted_content': result.extracted_content if hasattr(result, 'extracted_content') else None,
+            'error_message': result.error_message if hasattr(result, 'error_message') else None,
             'metadata': {
                 'title': getattr(result, 'title', None),
                 'description': getattr(result, 'description', None),
@@ -278,12 +305,26 @@ def scrape_url():
             }
         }
 
-        logger.info(f"Successfully scraped URL: {url}")
+        # Get usage statistics if available
+        try:
+            usage_stats = llm_strategy.show_usage()
+            scrape_data['usage_stats'] = usage_stats
+        except Exception as e:
+            logger.warning(f"Could not retrieve usage stats: {e}")
 
-        return jsonify({
-            'success': True,
-            'scrape_data': scrape_data
-        })
+        if result.success:
+            logger.info(f"Successfully scraped URL with LLM extraction: {url}")
+            return jsonify({
+                'success': True,
+                'scrape_data': scrape_data
+            })
+        else:
+            logger.error(f"Failed to scrape URL: {result.error_message}")
+            return jsonify({
+                'success': False,
+                'error': f'Failed to scrape URL: {result.error_message}',
+                'scrape_data': scrape_data
+            }), 500
 
     except Exception as e:
         logger.error(f"Error scraping URL: {str(e)}")

@@ -7,3 +7,4 @@ lxml[html_clean]
 lxml_html_clean
 crawl4ai
 playwright
+pydantic
